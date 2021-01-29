@@ -11,7 +11,7 @@ import TD3
 from arguments import get_args
 import checkpoint as cp
 from config import *
-
+import pdb
 
 def generate_video(args):
 
@@ -86,11 +86,13 @@ def generate_video(args):
         print("-" * 50)
         time_step_counter = 0
         printProgressBar(0, total_time)
+        episode_reward = 0
 
         while time_step_counter < total_time:
             printProgressBar(time_step_counter + 1, total_time, prefix=env_name)
             if done:
                 obs = env.reset()
+                # print(episode_reward)
                 done = False
                 episode_reward = 0
             action = policy.select_action(np.array(obs))
@@ -98,6 +100,7 @@ def generate_video(args):
             new_obs, reward, done, _ = env.step(action)
             episode_reward += reward
             # draw image of current frame
+            # image_data = env.render(mode = 'rgb_array')
             image_data = env.sim.render(VIDEO_RESOLUATION[0], VIDEO_RESOLUATION[1], camera_name="track")
             img = Image.fromarray(image_data, "RGB")
             draw = ImageDraw.Draw(img)

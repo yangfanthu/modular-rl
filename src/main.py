@@ -34,6 +34,10 @@ def train(args):
     if not args.custom_xml:
         for morphology in args.morphologies:
             envs_train_names += [name[:-4] for name in os.listdir(XML_DIR) if '.xml' in name and morphology in name]
+        total_num_envs = len(envs_train_names)
+        train_envs = envs_train_names[:int(args.train_ratio*total_num_envs)]
+        test_envs = envs_train_names[int(args.train_ratio*total_num_envs):]
+        envs_train_names = train_envs
         for name in envs_train_names:
             args.graphs[name] = utils.getGraphStructure(os.path.join(XML_DIR, '{}.xml'.format(name)))
     # custom envs
