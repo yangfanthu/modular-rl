@@ -48,5 +48,6 @@ def get_args():
     parser.add_argument("--max_children", type=int, default=None,
         help="maximum number of children allowed at each node (optional; facilitate model loading if max_children is different at training time)")
     parser.add_argument("--train_ratio", type=float, default=0.8)
+    parser.add_argument("--diff-weight", type=float, default=0.1)
     args = parser.parse_args()
     return args

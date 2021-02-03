@@ -99,7 +99,7 @@ def train(args):
     timesteps_since_saving = 0
     timesteps_since_saving_model_only = 0
     this_training_timesteps = 0
-    collect_done = True
+    collect_done = False
     episode_timesteps = 0
     episode_reward = 0
     episode_reward_buffer = 0
@@ -108,9 +108,16 @@ def train(args):
     # Start training ===========================================================
     for env_handle, env_name in zip(envs_train, envs_train_names):
         env = env_handle()
+        obs = env.reset()
         replay_buffer = utils.ReplayBuffer(max_size=args.rb_max)
         policy.change_morphology(args.graphs[env_name])
-        while total_timesteps < args.max_timesteps:
+        task_timesteps=0
+        done = False
+        collect_done = False
+        episode_timesteps = 0
+        episode_reward = 0
+        episode_reward_buffer = 0
+        while task_timesteps < int(args.max_timesteps / len(envs_train_names)):
             # train and log after one episode for each env
             if collect_done:
                 # log updates and train policy
@@ -120,8 +127,8 @@ def train(args):
                                 args.policy_freq, graphs=args.graphs, env_name=env_name)
                     # add to tensorboard display
                     
-                    writer.add_scalar('{}_episode_reward'.format(env_name), episode_reward, total_timesteps)
-                    writer.add_scalar('{}_episode_len'.format(env_name), episode_timesteps, total_timesteps)
+                    writer.add_scalar('{}_episode_reward'.format(env_name), episode_reward, task_timesteps)
+                    writer.add_scalar('{}_episode_len'.format(env_name), episode_timesteps, task_timesteps)
                     # print to console
                     print("-" * 50 + "\nExpID: {}, FPS: {:.2f}, TotalT: {}, EpisodeNum: {}, SampleNum: {}, ReplayBSize: {}".format(
                             args.expID, this_training_timesteps / (time.time() - s),
@@ -152,7 +159,7 @@ def train(args):
 
             # start sampling ===========================================================
             # sample action randomly for sometime and then according to the policy
-            if total_timesteps < args.start_timesteps:
+            if task_timesteps < args.start_timesteps:
                 action = np.random.uniform(low=env.action_space.low[0],
                                                 high=env.action_space.high[0],
                                                 size=max_num_limbs)
@@ -179,7 +186,7 @@ def train(args):
             if curr_done and episode_reward == 0:
                 episode_reward = episode_reward_buffer
                 episode_reward_buffer = 0
-            writer.add_scalar('{}_instant_reward'.format(env_name), reward, total_timesteps)
+            writer.add_scalar('{}_instant_reward'.format(env_name), reward, task_timesteps)
             done_bool = float(curr_done)
             if episode_timesteps + 1 == args.max_episode_steps:
                 done_bool = 0
@@ -196,16 +203,18 @@ def train(args):
             if not done:
                 episode_timesteps += 1
                 total_timesteps += 1
+                task_timesteps += 1
                 this_training_timesteps += 1
                 timesteps_since_saving += 1
                 timesteps_since_saving_model_only += 1
 
             obs = new_obs
             collect_done = done
+        policy.next_task()
 
     # save checkpoint after training ===========================================================
     model_saved_path = cp.save_model(exp_path, policy, total_timesteps,
-                                     episode_num, num_samples, {env_train_names[-1]: replay_buffer},
+                                     episode_num, num_samples, {envs_train_names[-1]: replay_buffer},
                                      envs_train_names, args)
     print("*** training finished and model saved to {} ***".format(model_saved_path))
 

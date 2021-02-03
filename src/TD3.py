@@ -143,12 +143,20 @@ class LifeLongTD3(object):
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=args.lr)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=args.lr)
         self.task_index = 0
-
+        self.prev_actor = ActorGraphPolicy(args.limb_obs_size, 1,
+                                      args.msg_dim, args.batch_size,
+                                      args.max_action, args.max_children,
+                                      args.disable_fold, args.td, args.bu).to(device)
+        self.prev_actor.load_state_dict(self.actor.state_dict())
+    def next_task(self):
+        self.task_index += 1
+        self.prev_actor.load_state_dict(self.actor.state_dict())
     def change_morphology(self, graph):
         self.actor.change_morphology(graph)
         self.actor_target.change_morphology(graph)
         self.critic.change_morphology(graph)
         self.critic_target.change_morphology(graph)
+        self.prev_actor.change_morphology(graph)
 
     def select_action(self, state):
         state = torch.FloatTensor(state.reshape(1, -1)).to(device)
@@ -195,7 +203,15 @@ class LifeLongTD3(object):
             if it % policy_freq == 0:
 
                 # compute actor loss
-                actor_loss = -self.critic.Q1(state, self.actor(state)).mean()
+                if self.task_index >= 1:
+                    with torch.no_grad():
+                        prev_action = self.prev_actor(state)
+                    current_action = self.actor(state)
+                    action_diff = torch.norm(prev_action-current_action)
+                    actor_loss = -self.critic.Q1(state, self.actor(state)).mean()
+                    actor_loss += self.args.diff_weight * action_diff
+                else:
+                    actor_loss = -self.critic.Q1(state, self.actor(state)).mean()
 
                 # optimize the actor
                 self.actor_optimizer.zero_grad()
