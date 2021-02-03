@@ -203,7 +203,7 @@ class LifeLongTD3(object):
             if it % policy_freq == 0:
 
                 # compute actor loss
-                if self.task_index >= 1:
+                if self.task_index >= 1 and self.args.lifelong:
                     with torch.no_grad():
                         prev_action = self.prev_actor(state)
                     current_action = self.actor(state)
