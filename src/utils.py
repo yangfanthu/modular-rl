@@ -19,7 +19,6 @@ def makeEnvWrapper(env_name, obs_max_len=None, seed=0):
         return wrappers.ModularEnvWrapper(e, obs_max_len)
     return helper
 
-
 def findMaxChildren(env_names, graphs):
     """return the maximum number of children given a list of env names and their corresponding graph structures"""
     max_children = 0
