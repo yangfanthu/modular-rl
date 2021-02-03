@@ -10,7 +10,7 @@ def get_args():
         help="path to MuJoCo xml files (can be either one file or a directory containing multiple files)")
     parser.add_argument("--start_timesteps", default=1e4, type=int,
         help="How many time steps purely random policy is run for?")
-    parser.add_argument('--max_timesteps', type=int, default=20e6,
+    parser.add_argument('--max_timesteps', type=int, default=10e6,
         help='number of timesteps to train')
     parser.add_argument("--expl_noise", default=0.126, type=float,
         help="std of Gaussian exploration noise")

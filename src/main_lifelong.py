@@ -117,7 +117,7 @@ def train(args):
         episode_timesteps = 0
         episode_reward = 0
         episode_reward_buffer = 0
-        while task_timesteps < int(args.max_timesteps / len(envs_train_names)):
+        while task_timesteps < args.max_timesteps:
             # train and log after one episode for each env
             if collect_done:
                 # log updates and train policy
