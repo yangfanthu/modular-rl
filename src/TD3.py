@@ -148,6 +148,7 @@ class LifeLongTD3(object):
                                       args.max_action, args.max_children,
                                       args.disable_fold, args.td, args.bu).to(device)
         self.prev_actor.load_state_dict(self.actor.state_dict())
+        self.graph = None
     def next_task(self):
         self.task_index += 1
         self.prev_actor.load_state_dict(self.actor.state_dict())

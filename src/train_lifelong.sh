@@ -1,1 +1,1 @@
-python main_lifelong.py --expID 001 --td --bu --morphologies walker
+python main_lifelong.py --expID 003 --td --bu --morphologies walker

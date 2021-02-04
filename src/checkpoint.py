@@ -37,6 +37,7 @@ def save_model(checkpoint_path, policy, total_timesteps, episode_num, num_sample
     }
     fpath = os.path.join(checkpoint_path, 'model.pyth')
     # (over)write the checkpoint
+    policy.change_morphology(policy.graph)
     torch.save(checkpoint, fpath)
     return fpath
 

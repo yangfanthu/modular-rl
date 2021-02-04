@@ -9,8 +9,10 @@ def get_args():
     parser.add_argument("--custom_xml", type=str, default=None,
         help="path to MuJoCo xml files (can be either one file or a directory containing multiple files)")
     parser.add_argument("--start_timesteps", default=1e4, type=int,
+    # parser.add_argument("--start_timesteps", default=1e1, type=int,
         help="How many time steps purely random policy is run for?")
-    parser.add_argument('--max_timesteps', type=int, default=10e6,
+    parser.add_argument('--max_timesteps', type=int, default=5e6,
+    # parser.add_argument('--max_timesteps', type=int, default=200,
         help='number of timesteps to train')
     parser.add_argument("--expl_noise", default=0.126, type=float,
         help="std of Gaussian exploration noise")
@@ -37,7 +39,8 @@ def get_args():
         help='learning rate for Adam')
     parser.add_argument("--max_episode_steps", type=int, default=1000,
         help="maximum number of timesteps allowed in one episode")
-    parser.add_argument("--save_freq", default=5e5, type=int,
+    parser.add_argument("--save_freq", default=1e5, type=int,
+    # parser.add_argument("--save_freq", default=1e1, type=int,
         help="How often (time steps) we save the model and the replay buffer?")
     parser.add_argument("--td", action="store_true",
         help="enable top down message passing")

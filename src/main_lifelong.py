@@ -111,6 +111,7 @@ def train(args):
         obs = env.reset()
         replay_buffer = utils.ReplayBuffer(max_size=args.rb_max)
         policy.change_morphology(args.graphs[env_name])
+        policy.graph = args.graphs[env_name]
         task_timesteps=0
         done = False
         collect_done = False
@@ -140,6 +141,7 @@ def train(args):
 
                 # save model and replay buffers
                 if timesteps_since_saving >= args.save_freq:
+                    print("!!!!!")
                     timesteps_since_saving = 0
                     model_saved_path = cp.save_model(exp_path, policy, total_timesteps,
                                                     episode_num, num_samples, {env_name: replay_buffer},
@@ -167,6 +169,8 @@ def train(args):
                 # remove 0 padding of obs before feeding into the policy (trick for vectorized env)
                 obs = np.array(obs[:args.limb_obs_size * len(args.graphs[env_name])])
                 policy_action = policy.select_action(obs)
+                # import pdb
+                # arset_trace()
                 if args.expl_noise != 0:
                     policy_action = (policy_action + np.random.normal(0, args.expl_noise,
                         size=policy_action.size)).clip(env.action_space.low[0],
