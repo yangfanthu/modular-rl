@@ -11,12 +11,12 @@ def get_args():
     parser.add_argument("--start_timesteps", default=1e4, type=int,
     # parser.add_argument("--start_timesteps", default=1e1, type=int,
         help="How many time steps purely random policy is run for?")
-    parser.add_argument('--max_timesteps', type=int, default=5e6,
+    parser.add_argument('--max_timesteps', type=int, default=1e6,
     # parser.add_argument('--max_timesteps', type=int, default=200,
         help='number of timesteps to train')
     parser.add_argument("--expl_noise", default=0.126, type=float,
         help="std of Gaussian exploration noise")
-    parser.add_argument("--batch_size", default=100, type=int,
+    parser.add_argument("--batch_size", default=128, type=int,
         help="batch size for both actor and critic")
     parser.add_argument("--discount", default=0.99, type=float,
         help="discount factor")
@@ -46,7 +46,8 @@ def get_args():
         help="enable top down message passing")
     parser.add_argument("--bu", action="store_true",
         help="enable bottom up message passing")
-    parser.add_argument("--rb_max", type=int, default=10e6,
+    # parser.add_argument("--rb_max", type=int, default=10e6,
+    parser.add_argument("--rb_max", type=int, default=1e6,
         help="maximum replay buffer size across all morphologies")
     parser.add_argument("--max_children", type=int, default=None,
         help="maximum number of children allowed at each node (optional; facilitate model loading if max_children is different at training time)")
