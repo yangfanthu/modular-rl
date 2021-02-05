@@ -84,22 +84,13 @@ def train(args):
         episode_num = 0
         num_samples = 0
         # different replay buffer for each env; avoid using too much memory if there are too many envs
-        replay_buffer = dict()
-        if num_envs_train > args.rb_max // 1e6:
-            for name in envs_train_names:
-                replay_buffer[name] = utils.ReplayBuffer(max_size=args.rb_max // num_envs_train)
-        else:
-            for name in envs_train_names:
-                replay_buffer[name] = utils.ReplayBuffer()
 
     # Initialize training variables ================================================
     writer = SummaryWriter("%s/%s/" % (DATA_DIR, exp_name))
     s = time.time()
     # TODO: may have to change the following codes into the loop
     timesteps_since_saving = 0
-    timesteps_since_saving_model_only = 0
     this_training_timesteps = 0
-    collect_done = False
     episode_timesteps = 0
     episode_reward = 0
     episode_reward_buffer = 0
@@ -114,13 +105,12 @@ def train(args):
         policy.graph = args.graphs[env_name]
         task_timesteps=0
         done = False
-        collect_done = False
         episode_timesteps = 0
         episode_reward = 0
         episode_reward_buffer = 0
         while task_timesteps < args.max_timesteps:
             # train and log after one episode for each env
-            if collect_done:
+            if done:
                 # log updates and train policy
                 if this_training_timesteps != 0:
                     policy.train(replay_buffer, episode_timesteps, args.batch_size,
@@ -138,6 +128,8 @@ def train(args):
                     print("{} === EpisodeT: {}, Reward: {:.2f}".format(env_name,
                                                                     episode_timesteps,
                                                                     episode_reward))
+                    this_training_timesteps = 0
+                    s = time.time()
 
                 # save model and replay buffers
                 if timesteps_since_saving >= args.save_freq:
@@ -179,19 +171,18 @@ def train(args):
                 action = np.append(policy_action, np.array([0 for i in range(max_num_limbs - policy_action.size)]))
 
             # perform action in the environment
-            new_obs, reward, curr_done, _ = env.step(action)
+            new_obs, reward, done, _ = env.step(action)
 
             # record if each env has ever been 'done'
-            done = done or curr_done
 
             # add the instant reward to the cumulative buffer
             # if any sub-env is done at the momoent, set the episode reward list to be the value in the buffer
             episode_reward_buffer += reward
-            if curr_done and episode_reward == 0:
+            if done and episode_reward == 0:
                 episode_reward = episode_reward_buffer
                 episode_reward_buffer = 0
             writer.add_scalar('{}_instant_reward'.format(env_name), reward, task_timesteps)
-            done_bool = float(curr_done)
+            done_bool = float(done)
             if episode_timesteps + 1 == args.max_episode_steps:
                 done_bool = 0
                 done = True
@@ -210,10 +201,8 @@ def train(args):
                 task_timesteps += 1
                 this_training_timesteps += 1
                 timesteps_since_saving += 1
-                timesteps_since_saving_model_only += 1
 
             obs = new_obs
-            collect_done = done
         policy.next_task()
 
     # save checkpoint after training ===========================================================
