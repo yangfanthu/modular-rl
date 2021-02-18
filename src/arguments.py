@@ -55,5 +55,6 @@ def get_args():
     parser.add_argument("--diff-weight", type=float, default=0.1)
     parser.add_argument("--lifelong", type=bool, default=True)
     parser.add_argument("--agent-name", type=str, default="walker_7_flipped", help="this argument is onlyy used for training only one morphology" )
+    parser.add_argument("--num-parallel", type=int, default=8, help="the num of processes to be used in the lifelong training process")
     args = parser.parse_args()
     return args
