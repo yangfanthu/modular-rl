@@ -54,5 +54,6 @@ def get_args():
     parser.add_argument("--train_ratio", type=float, default=0.8)
     parser.add_argument("--diff-weight", type=float, default=0.1)
     parser.add_argument("--lifelong", type=bool, default=True)
+    parser.add_argument("--agent-name", type=str, default="walker_7_flipped", help="this argument is onlyy used for training only one morphology" )
     args = parser.parse_args()
     return args

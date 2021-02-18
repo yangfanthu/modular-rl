@@ -11,8 +11,12 @@ from arguments import get_args
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 import checkpoint as cp
 from config import *
-
-
+"""
+possible names for walker morphologies:
+['walker_3_flipped', 'walker_5_main', 'walker_4_main', 'walker_6_flipped', 'walker_5_flipped', 
+'walker_2_main', 'walker_3_main', 'walker_7_flipped', 'walker_6_main', 'walker_7_main', 
+'walker_2_flipped', 'walker_4_flipped']
+"""
 def train(args):
 
     # Set up directories ===========================================================
@@ -28,32 +32,14 @@ def train(args):
         json.dump(args.__dict__, f, indent=2)
 
     # Retrieve MuJoCo XML files for training ========================================
-    envs_train_names = []
+    agent_name = args.agent_name
+    envs_train_names = [agent_name]
     args.graphs = dict()
     # existing envs
     if not args.custom_xml:
-        for morphology in args.morphologies:
-            envs_train_names += [name[:-4] for name in os.listdir(XML_DIR) if '.xml' in name and morphology in name]
-        envs_train_names.sort()
-        total_num_envs = len(envs_train_names)
-        train_envs = envs_train_names[:int(args.train_ratio*total_num_envs)]
-        test_envs = envs_train_names[int(args.train_ratio*total_num_envs):]
-        envs_train_names = train_envs
-        for name in envs_train_names:
-            args.graphs[name] = utils.getGraphStructure(os.path.join(XML_DIR, '{}.xml'.format(name)))
+        args.graphs[agent_name] = utils.getGraphStructure(os.path.join(XML_DIR, '{}.xml'.format(agent_name)))
     # custom envs
-    else:
-        if os.path.isfile(args.custom_xml):
-            assert '.xml' in os.path.basename(args.custom_xml), 'No XML file found.'
-            name = os.path.basename(args.custom_xml)
-            envs_train_names.append(name[:-4])  # truncate the .xml suffix
-            args.graphs[name[:-4]] = utils.getGraphStructure(args.custom_xml)
-        elif os.path.isdir(args.custom_xml):
-            for name in os.listdir(args.custom_xml):
-                if '.xml' in name:
-                    envs_train_names.append(name[:-4])
-                    args.graphs[name[:-4]] = utils.getGraphStructure(os.path.join(args.custom_xml, name))
-    envs_train_names.sort()
+
     num_envs_train = len(envs_train_names)
     print("#" * 50 + '\ntraining envs: {}\n'.format(envs_train_names) + "#" * 50)
 
@@ -162,8 +148,6 @@ def train(args):
                 # remove 0 padding of obs before feeding into the policy (trick for vectorized env)
                 obs = np.array(obs[:args.limb_obs_size * len(args.graphs[env_name])])
                 policy_action = policy.select_action(obs)
-                # import pdb
-                # arset_trace()
                 if args.expl_noise != 0:
                     policy_action = (policy_action + np.random.normal(0, args.expl_noise,
                         size=policy_action.size)).clip(env.action_space.low[0],
