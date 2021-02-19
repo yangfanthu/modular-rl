@@ -32,8 +32,15 @@ def train(args):
     args.graphs = dict()
     # existing envs
     if not args.custom_xml:
-        for morphology in args.morphologies:
-            envs_train_names += [name[:-4] for name in os.listdir(XML_DIR) if '.xml' in name and morphology in name]
+        if args.predefined_order:
+            envs_train_names = ['walker_7_flipped', 'walker_7_main', 'walker_3_flipped', 'walker_5_main',
+            'walker_4_main', 'walker_6_flipped', 'walker_5_flipped',
+            'walker_3_main', 'walker_6_main',  
+             'walker_4_flipped']
+        else:
+            for morphology in args.morphologies:
+                envs_train_names += [name[:-4] for name in os.listdir(XML_DIR) if '.xml' in name and morphology in name]
+        
         envs_train_names.sort()
         total_num_envs = len(envs_train_names)
         train_envs = envs_train_names[:int(args.train_ratio*total_num_envs)]
@@ -70,7 +77,7 @@ def train(args):
     if args.max_children is None:
         args.max_children = utils.findMaxChildren(envs_train_names, args.graphs)
     # setup agent policy
-    policy = TD3.TD3(args)
+    policy = TD3.LifeLongTD3(args)
 
     # Create new training instance or load previous checkpoint ========================
     if cp.has_checkpoint(exp_path, rb_path):
@@ -99,8 +106,7 @@ def train(args):
         for i in range(args.num_parallel):
             envs_train.append(utils.makeEnvWrapper(env_name, obs_max_len, args.seed))
         envs_train = SubprocVecEnv(envs_train)
-        replay_buffer = dict()
-        replay_buffer[env_name] = utils.ReplayBuffer(max_size=args.rb_max)
+        replay_buffer = utils.ReplayBuffer(max_size=args.rb_max)
         policy.change_morphology(args.graphs[env_name])
         policy.graph = args.graphs[env_name]
         task_timesteps = 0
@@ -112,9 +118,9 @@ def train(args):
             if collect_done:
                 # log updates and train policy
                 if this_training_timesteps != 0:
-                    policy.train(replay_buffer, episode_timesteps_list, args.batch_size,
+                    policy.train(replay_buffer, np.array(episode_timesteps_list).sum(), args.batch_size,
                                 args.discount, args.tau, args.policy_noise, args.noise_clip,
-                                args.policy_freq, graphs=args.graphs, envs_train_names=[env_name])
+                                args.policy_freq, graphs=args.graphs, env_name=env_name)
                     # add to tensorboard display
                     for i in range(args.num_parallel):
                         writer.add_scalar('{}_episode_reward_proc{}'.format(env_name,i), episode_reward_list[i], task_timesteps)
@@ -123,7 +129,7 @@ def train(args):
                     print("-" * 50 + "\nExpID: {}, FPS: {:.2f}, TotalT: {}, EpisodeNum: {}, SampleNum: {}, ReplayBSize: {}".format(
                             args.expID, this_training_timesteps / (time.time() - s),
                             total_timesteps, episode_num, num_samples,
-                            sum([len(replay_buffer[env_name].storage)])))
+                            sum([len(replay_buffer.storage)])))
                     for i in range(args.num_parallel):
                         print("{} process {} === EpisodeT: {}, Reward: {:.2f}".format(env_name,i,
                                                                         episode_timesteps_list[i],
@@ -197,7 +203,7 @@ def train(args):
                 new_obs = np.array(new_obs_list[i][:args.limb_obs_size * num_limbs])
                 action = np.array(action_list[i][:num_limbs])
                 # insert transition in the replay buffer
-                replay_buffer[env_name].add((obs, new_obs, action, reward_list[i], done_bool))
+                replay_buffer.add((obs, new_obs, action, reward_list[i], done_bool))
                 num_samples += 1
                 # do not increment episode_timesteps if the sub-env has been 'done'
                 if not done_list[i]:

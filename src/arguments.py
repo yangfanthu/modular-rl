@@ -56,5 +56,6 @@ def get_args():
     parser.add_argument("--lifelong", type=bool, default=True)
     parser.add_argument("--agent-name", type=str, default="walker_7_flipped", help="this argument is onlyy used for training only one morphology" )
     parser.add_argument("--num-parallel", type=int, default=8, help="the num of processes to be used in the lifelong training process")
+    parser.add_argument("--predefined-order", type=bool, default=False, help="whether to use predefined order in the lifelong training")
     args = parser.parse_args()
     return args
