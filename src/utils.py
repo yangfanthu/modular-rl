@@ -10,10 +10,14 @@ from gym.envs.registration import register
 from shutil import copyfile
 from config import *
 
+from arguments import get_args
+
 
 def makeEnvWrapper(env_name, obs_max_len=None, seed=0):
+    args = get_args()
     """return wrapped gym environment for parallel sample collection (vectorized environments)"""
     def helper():
+        registerEnvs([env_name],args.max_episode_steps, args.custom_xml)
         e = gym.make("environments:%s-v0" % env_name)
         e.seed(seed)
         return wrappers.ModularEnvWrapper(e, obs_max_len)

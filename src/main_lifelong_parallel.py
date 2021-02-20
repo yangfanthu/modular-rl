@@ -40,8 +40,9 @@ def train(args):
         else:
             for morphology in args.morphologies:
                 envs_train_names += [name[:-4] for name in os.listdir(XML_DIR) if '.xml' in name and morphology in name]
+            envs_train_names.sort()
+
         
-        envs_train_names.sort()
         total_num_envs = len(envs_train_names)
         train_envs = envs_train_names[:int(args.train_ratio*total_num_envs)]
         test_envs = envs_train_names[int(args.train_ratio*total_num_envs):]
@@ -60,7 +61,7 @@ def train(args):
                 if '.xml' in name:
                     envs_train_names.append(name[:-4])
                     args.graphs[name[:-4]] = utils.getGraphStructure(os.path.join(args.custom_xml, name))
-    envs_train_names.sort()
+    # envs_train_names.sort()
     num_envs_train = len(envs_train_names)
     print("#" * 50 + '\ntraining envs: {}\n'.format(envs_train_names) + "#" * 50)
 
@@ -105,7 +106,7 @@ def train(args):
         envs_train = []
         for i in range(args.num_parallel):
             envs_train.append(utils.makeEnvWrapper(env_name, obs_max_len, args.seed))
-        envs_train = SubprocVecEnv(envs_train)
+        envs_train = SubprocVecEnv(envs_train, in_series=1)
         replay_buffer = utils.ReplayBuffer(max_size=args.rb_max)
         policy.change_morphology(args.graphs[env_name])
         policy.graph = args.graphs[env_name]
@@ -141,10 +142,10 @@ def train(args):
                 if timesteps_since_saving >= args.save_freq:
                     timesteps_since_saving = 0
                     model_saved_path = cp.save_model(exp_path, policy, total_timesteps,
-                                                    episode_num, num_samples, replay_buffer,
+                                                    episode_num, num_samples, {env_name: replay_buffer},
                                                     envs_train_names, args)
                     print("*** model saved to {} ***".format(model_saved_path))
-                    rb_saved_path = cp.save_replay_buffer(rb_path, replay_buffer)
+                    rb_saved_path = cp.save_replay_buffer(rb_path, {env_name: replay_buffer})
                     print("*** replay buffers saved to {} ***".format(rb_saved_path))
 
                 # reset training variables
