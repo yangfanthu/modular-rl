@@ -9,6 +9,7 @@ import gym
 from gym.envs.registration import register
 from shutil import copyfile
 from config import *
+import math
 
 from arguments import get_args
 
@@ -17,7 +18,23 @@ def makeEnvWrapper(env_name, obs_max_len=None, seed=0):
     args = get_args()
     """return wrapped gym environment for parallel sample collection (vectorized environments)"""
     def helper():
+        # registerEnvs([env_name],args.max_episode_steps, args.custom_xml)
+        e = gym.make("environments:%s-v0" % env_name)
+        e.seed(seed)
+        return wrappers.ModularEnvWrapper(e, obs_max_len)
+    return helper
+def makeEnvWrapperParallel(env_name, obs_max_len=None, seed=0): # the one with registration of env
+    args = get_args()
+    """return wrapped gym environment for parallel sample collection (vectorized environments)"""
+    def helper():
         registerEnvs([env_name],args.max_episode_steps, args.custom_xml)
+        e = gym.make("environments:%s-v0" % env_name)
+        e.seed(seed)
+        return wrappers.ModularEnvWrapper(e, obs_max_len)
+    return helper
+def makeEnvWrapperViz(env_name, obs_max_len=None, seed=0):
+    """return wrapped gym environment for parallel sample collection (vectorized environments)"""
+    def helper():
         e = gym.make("environments:%s-v0" % env_name)
         e.seed(seed)
         return wrappers.ModularEnvWrapper(e, obs_max_len)
@@ -169,6 +186,10 @@ def getGraphStructure(xml_file):
     parents = []
     try:
         root = xml['mujoco']['worldbody']['body']
+        if len(root) > 1 and isinstance(root, list):
+            assert root[-1]['@name'] == "object"
+            print("this is only used in the manipulation environment")
+            root = root[0]
         assert not isinstance(root, list), 'worldbody can only contain one body (torso) for the current implementation, but found {}'.format(root)
     except:
         raise Exception("The given xml file does not follow the standard MuJoCo format.")
@@ -204,6 +225,8 @@ def getGraphJoints(xml_file):
         root = xml['mujoco']['worldbody']['body']
     except:
         raise Exception("The given xml file does not follow the standard MuJoCo format.")
+    if len(root) > 1 and isinstance(root,list):
+        root = root[0]
     preorder(root)
     return joints
 
@@ -220,3 +243,33 @@ def getMotorJoints(xml_file):
     for m in motors:
         joints.append(m['@joint'])
     return joints
+
+
+
+
+#     from sac 
+def create_log_gaussian(mean, log_std, t):
+    quadratic = -((0.5 * (t - mean) / (log_std.exp())).pow(2))
+    l = mean.shape
+    log_z = log_std
+    z = l[-1] * math.log(2 * math.pi)
+    log_p = quadratic.sum(dim=-1) - log_z.sum(dim=-1) - 0.5 * z
+    return log_p
+
+def logsumexp(inputs, dim=None, keepdim=False):
+    if dim is None:
+        inputs = inputs.view(-1)
+        dim = 0
+    s, _ = torch.max(inputs, dim=dim, keepdim=True)
+    outputs = s + (inputs - s).exp().sum(dim=dim, keepdim=True).log()
+    if not keepdim:
+        outputs = outputs.squeeze(dim)
+    return outputs
+
+def soft_update(target, source, tau):
+    for target_param, param in zip(target.parameters(), source.parameters()):
+        target_param.data.copy_(target_param.data * (1.0 - tau) + param.data * tau)
+
+def hard_update(target, source):
+    for target_param, param in zip(target.parameters(), source.parameters()):
+        target_param.data.copy_(param.data)

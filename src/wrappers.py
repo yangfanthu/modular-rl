@@ -23,6 +23,7 @@ class ModularEnvWrapper(gym.Wrapper):
         # match the order of modular policy actions to the order of environment actions
         self.motors = utils.getMotorJoints(self.env.xml)
         self.joints = utils.getGraphJoints(self.env.xml)
+        # TODO: check whether this works fine
         self.action_order = [-1] * self.num_limbs
         for i in range(len(self.joints)):
             assert sum([j in self.motors for j in self.joints[i][1:]]) <= 1, 'Modular policy does not support two motors per body'

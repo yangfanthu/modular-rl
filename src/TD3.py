@@ -210,6 +210,7 @@ class LifeLongTD3(object):
                     current_action = self.actor(state)
                     action_diff = torch.norm(prev_action-current_action)
                     actor_loss = -self.critic.Q1(state, self.actor(state)).mean()
+                    # print("actor_loss {}, action_diff {}".format(actor_loss, action_diff))
                     actor_loss += self.args.diff_weight * action_diff
                 else:
                     actor_loss = -self.critic.Q1(state, self.actor(state)).mean()

@@ -1,5 +1,6 @@
 from __future__ import print_function
 import os
+import pdb
 import torch
 import utils
 import numpy as np
@@ -40,14 +41,40 @@ def save_model(checkpoint_path, policy, total_timesteps, episode_num, num_sample
     torch.save(checkpoint, fpath)
     policy.change_morphology(policy.graph)
     return fpath
-
+def save_model_lifelong(checkpoint_path, policy, total_timesteps, episode_num, num_samples, replay_buffer, env_name, args):
+    # change to default graph before saving
+    policy.change_morphology([-1])
+    # Record the state
+    checkpoint = {
+        'actor_state': policy.actor.state_dict(),
+        'critic_state': policy.critic.state_dict(),
+        'actor_target_state': policy.actor_target.state_dict(),
+        'critic_target_state': policy.critic_target.state_dict(),
+        'actor_optimizer_state': policy.actor_optimizer.state_dict(),
+        'critic_optimizer_state': policy.critic_optimizer.state_dict(),
+        'total_timesteps': total_timesteps,
+        'episode_num': episode_num,
+        'num_samples': num_samples,
+        'args': args,
+        'rb_max': replay_buffer.max_size,
+        'rb_ptr': replay_buffer.ptr,
+        'rb_slicing_size': replay_buffer.slicing_size
+    }
+    fpath = os.path.join(checkpoint_path, '{}_model.pyth'.format(env_name))
+    # (over)write the checkpoint
+    torch.save(checkpoint, fpath)
+    policy.change_morphology(policy.graph)
+    return fpath
 
 def save_replay_buffer(rb_path, replay_buffer):
     # save replay buffer
     for name in replay_buffer:
         np.save(os.path.join(rb_path, '{}.npy'.format(name)), np.array(replay_buffer[name].storage), allow_pickle=False)
     return rb_path
-
+def save_replay_buffer_lifelong(rb_path, replay_buffer, env_name):
+    # save replay buffer
+    np.save(os.path.join(rb_path, '{}.npy'.format(env_name)), np.array(replay_buffer.storage), allow_pickle=False)
+    return rb_path
 
 def load_checkpoint(checkpoint_path, rb_path, policy, args):
     fpath = os.path.join(checkpoint_path, 'model.pyth')

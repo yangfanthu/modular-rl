@@ -33,9 +33,9 @@ def train(args):
     # existing envs
     if not args.custom_xml:
         if args.predefined_order:
-            envs_train_names = ['walker_7_flipped', 'walker_7_main', 'walker_3_flipped', 'walker_5_main',
-            'walker_4_main', 'walker_6_flipped', 'walker_5_flipped',
-            'walker_3_main', 'walker_6_main',  
+            envs_train_names = ['walker_7_flipped', 'walker_7_main','walker_6_flipped','walker_5_main', 
+            'walker_4_main', 'walker_5_flipped',
+            'walker_3_main', 'walker_6_main', 'walker_3_flipped', 
              'walker_4_flipped']
         else:
             for morphology in args.morphologies:
@@ -99,67 +99,80 @@ def train(args):
     # TODO: may have to change the following codes into the loop
     timesteps_since_saving = 0
     this_training_timesteps = 0
-    done = True
 
     # Start training ===========================================================
     for env_name in envs_train_names:
+        print("new env: {}".format(env_name))
         envs_train = []
         for i in range(args.num_parallel):
-            envs_train.append(utils.makeEnvWrapper(env_name, obs_max_len, args.seed))
+            envs_train.append(utils.makeEnvWrapperParallel(env_name, obs_max_len, args.seed))
         envs_train = SubprocVecEnv(envs_train, in_series=1)
         replay_buffer = utils.ReplayBuffer(max_size=args.rb_max)
         policy.change_morphology(args.graphs[env_name])
         policy.graph = args.graphs[env_name]
         task_timesteps = 0
         collect_done=True
+        obs_list = envs_train.reset()
+        done_list = [False for i in range(args.num_parallel)]
+        episode_reward_list = [0 for i in range(args.num_parallel)]
         episode_timesteps_list = [0 for i in range(args.num_parallel)]
-        done_list = [True for i in range(args.num_parallel)]
+        # create reward buffer to store reward for one sub-env when it is not done
+        episode_reward_list_buffer = [0 for i in range(args.num_parallel)]
+        mean_reward = 0
+        this_training_timesteps = 0
         while task_timesteps < args.max_timesteps:
             # train and log after one episode for each env
             if collect_done:
                 # log updates and train policy
                 if this_training_timesteps != 0:
-                    policy.train(replay_buffer, np.array(episode_timesteps_list).sum(), args.batch_size,
-                                args.discount, args.tau, args.policy_noise, args.noise_clip,
-                                args.policy_freq, graphs=args.graphs, env_name=env_name)
+                    mean_reward = np.array(episode_reward_list).mean()
+                    if mean_reward < args.success_thres:
+                        policy.train(replay_buffer, np.array(episode_timesteps_list).sum(), args.batch_size,
+                                    args.discount, args.tau, args.policy_noise, args.noise_clip,
+                                    args.policy_freq, graphs=args.graphs, env_name=env_name)
                     # add to tensorboard display
-                    for i in range(args.num_parallel):
-                        writer.add_scalar('{}_episode_reward_proc{}'.format(env_name,i), episode_reward_list[i], task_timesteps)
-                        writer.add_scalar('{}_episode_len_proc{}'.format(env_name,i), episode_timesteps_list[i], task_timesteps)
+                    writer.add_scalar('{}_episode_mean_reward'.format(env_name), mean_reward, task_timesteps)
+                    # for i in range(args.num_parallel):
+                    #     writer.add_scalar('{}_episode_reward_proc{}'.format(env_name,i), episode_reward_list[i], task_timesteps)
+                    #     writer.add_scalar('{}_episode_len_proc{}'.format(env_name,i), episode_timesteps_list[i], task_timesteps)
                     # print to console
-                    print("-" * 50 + "\nExpID: {}, FPS: {:.2f}, TotalT: {}, EpisodeNum: {}, SampleNum: {}, ReplayBSize: {}".format(
+                    print("-" * 50 + "\nExpID: {}, FPS: {:.2f}, TotalT: {}, taskT:{},  EpisodeNum: {}, SampleNum: {}, ReplayBSize: {}".format(
                             args.expID, this_training_timesteps / (time.time() - s),
-                            total_timesteps, episode_num, num_samples,
+                            total_timesteps, task_timesteps, episode_num, num_samples,
                             sum([len(replay_buffer.storage)])))
                     for i in range(args.num_parallel):
                         print("{} process {} === EpisodeT: {}, Reward: {:.2f}".format(env_name,i,
                                                                         episode_timesteps_list[i],
                                                                         episode_reward_list[i]))
+                    print("mean reward {}".format(mean_reward))
                     this_training_timesteps = 0
                     s = time.time()
 
                 # save model and replay buffers
                 if timesteps_since_saving >= args.save_freq:
                     timesteps_since_saving = 0
-                    model_saved_path = cp.save_model(exp_path, policy, total_timesteps,
-                                                    episode_num, num_samples, {env_name: replay_buffer},
-                                                    envs_train_names, args)
+                    model_saved_path = cp.save_model_lifelong(exp_path, policy, total_timesteps,
+                                                    episode_num, num_samples, replay_buffer,
+                                                    env_name, args)
                     print("*** model saved to {} ***".format(model_saved_path))
-                    rb_saved_path = cp.save_replay_buffer(rb_path, {env_name: replay_buffer})
+                    rb_saved_path = cp.save_replay_buffer_lifelong(rb_path, replay_buffer, env_name)
                     print("*** replay buffers saved to {} ***".format(rb_saved_path))
 
                 # reset training variables
+              
                 obs_list = envs_train.reset()
                 done_list = [False for i in range(args.num_parallel)]
                 episode_reward_list = [0 for i in range(args.num_parallel)]
                 episode_timesteps_list = [0 for i in range(args.num_parallel)]
-                episode_num += num_envs_train
+                episode_num += args.num_parallel
                 # create reward buffer to store reward for one sub-env when it is not done
                 episode_reward_list_buffer = [0 for i in range(args.num_parallel)]
-
+                if mean_reward > args.success_thres:
+                    print("satisfied training requirement, change to the next task")
+                    break
             # start sampling ===========================================================
             # sample action randomly for sometime and then according to the policy
-            if total_timesteps < args.start_timesteps:
+            if task_timesteps < args.start_timesteps:
                 action_list = [np.random.uniform(low=envs_train.action_space.low[0],
                                                 high=envs_train.action_space.high[0],
                                                 size=max_num_limbs) for i in range(args.num_parallel)]
@@ -217,12 +230,15 @@ def train(args):
             obs_list = new_obs_list
             collect_done = all(done_list)
 
+        model_saved_path = cp.save_model_lifelong(exp_path, policy, total_timesteps,
+                                            episode_num, num_samples, replay_buffer,
+                                            env_name, args)
         policy.next_task()
 
     # save checkpoint after training ===========================================================
-    model_saved_path = cp.save_model(exp_path, policy, total_timesteps,
-                                     episode_num, num_samples, {envs_train_names[-1]: replay_buffer},
-                                     envs_train_names, args)
+    model_saved_path = cp.save_model_lifelong(exp_path, policy, total_timesteps,
+                                     episode_num, num_samples, replay_buffer,
+                                     env_name, args)
     print("*** training finished and model saved to {} ***".format(model_saved_path))
 
 

@@ -134,7 +134,6 @@ def train(args):
 
                 # save model and replay buffers
                 if timesteps_since_saving >= args.save_freq:
-                    print("!!!!!")
                     timesteps_since_saving = 0
                     model_saved_path = cp.save_model(exp_path, policy, total_timesteps,
                                                     episode_num, num_samples, {env_name: replay_buffer},

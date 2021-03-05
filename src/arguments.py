@@ -16,8 +16,11 @@ def get_args():
         help='number of timesteps to train')
     parser.add_argument("--expl_noise", default=0.126, type=float,
         help="std of Gaussian exploration noise")
-    parser.add_argument("--batch_size", default=128, type=int,
+    # parser.add_argument("--batch_size", default=128, type=int,
+    #     help="batch size for both actor and critic")
+    parser.add_argument("--batch_size", default=1024, type=int,
         help="batch size for both actor and critic")
+
     parser.add_argument("--discount", default=0.99, type=float,
         help="discount factor")
     parser.add_argument("--tau", default=0.046, type=float,
@@ -51,11 +54,12 @@ def get_args():
         help="maximum replay buffer size across all morphologies")
     parser.add_argument("--max_children", type=int, default=None,
         help="maximum number of children allowed at each node (optional; facilitate model loading if max_children is different at training time)")
-    parser.add_argument("--train_ratio", type=float, default=0.8)
+    parser.add_argument("--train-ratio", type=float, default=0.8)
     parser.add_argument("--diff-weight", type=float, default=0.1)
     parser.add_argument("--lifelong", type=bool, default=True)
     parser.add_argument("--agent-name", type=str, default="walker_7_flipped", help="this argument is onlyy used for training only one morphology" )
-    parser.add_argument("--num-parallel", type=int, default=8, help="the num of processes to be used in the lifelong training process")
+    parser.add_argument("--num-parallel", type=int, default=16, help="the num of processes to be used in the lifelong training process")
     parser.add_argument("--predefined-order", type=bool, default=False, help="whether to use predefined order in the lifelong training")
+    parser.add_argument("--success-thres", type=int, default=2500, help="when the reward reaches this value, we consider it succeed and train the next task")
     args = parser.parse_args()
     return args

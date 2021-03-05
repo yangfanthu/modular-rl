@@ -64,7 +64,7 @@ def generate_video(args):
     # visualize ===========================================================
     for env_name in env_names:
         # create env
-        env = utils.makeEnvWrapper(env_name, seed=args.seed, obs_max_len=None)()
+        env = utils.makeEnvWrapperViz(env_name, seed=args.seed, obs_max_len=None)()
         policy.change_morphology(args.graphs[env_name])
 
         # create unique temp frame dir
